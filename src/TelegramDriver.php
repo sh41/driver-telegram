@@ -70,7 +70,7 @@ class TelegramDriver extends HttpDriver
             'user_id' => $matchingMessage->getSender(),
         ];
 
-        $response = $this->http->post($this->buildApiUrl('getChatMember'), [], $parameters);
+        $response = $this->post($this->buildApiUrl('getChatMember'), [], $parameters);
 
         $responseData = json_decode($response->getContent(), true);
 
@@ -246,7 +246,7 @@ class TelegramDriver extends HttpDriver
             'action' => 'typing',
         ];
 
-        return $this->http->post($this->buildApiUrl('sendChatAction'), [], $parameters);
+        return $this->post($this->buildApiUrl('sendChatAction'), [], $parameters);
     }
 
     /**
@@ -285,7 +285,7 @@ class TelegramDriver extends HttpDriver
             'inline_keyboard' => [],
         ];
 
-        return $this->http->post($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
+        return $this->post($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
     }
 
     /**
@@ -369,7 +369,7 @@ class TelegramDriver extends HttpDriver
      */
     public function sendPayload($payload)
     {
-        return $this->http->post($this->buildApiUrl($this->endpoint), [], $payload);
+        return $this->post($this->buildApiUrl($this->endpoint), [], $payload);
     }
 
     /**
@@ -394,7 +394,7 @@ class TelegramDriver extends HttpDriver
             'chat_id' => $matchingMessage->getRecipient(),
         ], $parameters);
 
-        return $this->http->post($this->buildApiUrl($endpoint), [], $parameters);
+        return $this->post($this->buildApiUrl($endpoint), [], $parameters);
     }
 
     /**
