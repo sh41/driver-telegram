@@ -2,6 +2,7 @@
 
 namespace BotMan\Drivers\Telegram;
 
+use BotMan\Drivers\Telegram\Exceptions\TelegramConnectionException;
 use Illuminate\Support\Collection;
 use BotMan\BotMan\Drivers\HttpDriver;
 use BotMan\BotMan\Messages\Incoming\Answer;
@@ -70,7 +71,7 @@ class TelegramDriver extends HttpDriver
             'user_id' => $matchingMessage->getSender(),
         ];
 
-        $response = $this->http->post($this->buildApiUrl('getChatMember'), [], $parameters);
+        $response = $this->post($this->buildApiUrl('getChatMember'), [], $parameters);
 
         $responseData = json_decode($response->getContent(), true);
 
@@ -246,7 +247,7 @@ class TelegramDriver extends HttpDriver
             'action' => 'typing',
         ];
 
-        return $this->http->post($this->buildApiUrl('sendChatAction'), [], $parameters);
+        return $this->post($this->buildApiUrl('sendChatAction'), [], $parameters);
     }
 
     /**
@@ -285,7 +286,7 @@ class TelegramDriver extends HttpDriver
             'inline_keyboard' => [],
         ];
 
-        return $this->http->post($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
+        return $this->post($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
     }
 
     /**
@@ -303,7 +304,7 @@ class TelegramDriver extends HttpDriver
         $parameters = array_merge_recursive([
             'chat_id' => $recipient,
         ], $additionalParameters + $defaultAdditionalParameters);
-        
+
         /*
          * If we send a Question with buttons, ignore
          * the text and append the question.
@@ -371,7 +372,7 @@ class TelegramDriver extends HttpDriver
      */
     public function sendPayload($payload)
     {
-        return $this->http->post($this->buildApiUrl($this->endpoint), [], $payload);
+        return $this->post($this->buildApiUrl($this->endpoint), [], $payload);
     }
 
     /**
@@ -396,7 +397,7 @@ class TelegramDriver extends HttpDriver
             'chat_id' => $matchingMessage->getRecipient(),
         ], $parameters);
 
-        return $this->http->post($this->buildApiUrl($endpoint), [], $parameters);
+        return $this->post($this->buildApiUrl($endpoint), [], $parameters);
     }
 
     /**
@@ -419,5 +420,23 @@ class TelegramDriver extends HttpDriver
     protected function buildFileApiUrl($endpoint)
     {
         return self::FILE_API_URL.$this->config->get('token').'/'.$endpoint;
+    }
+
+    private function post(
+        $url,
+        array $urlParameters = [],
+        array $postParameters = [],
+        array $headers = [],
+        $asJSON = false
+    ) {
+        $response = $this->http->post($url, $urlParameters, $postParameters, $headers, $asJSON);
+        if ($response->getStatusCode() !== 200) {
+            throw new TelegramConnectionException('Error retrieving user info: '.$responseData['description']);
+        }
+        $responseData = json_decode($response->getContent(), true);
+        if (true === $responseData['ok']) {
+            return $response;
+        }
+        throw new TelegramConnectionException("Failure in call to telegram API. {$responseData['description']}.");
     }
 }
