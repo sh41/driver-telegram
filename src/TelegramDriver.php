@@ -2,6 +2,7 @@
 
 namespace BotMan\Drivers\Telegram;
 
+use BotMan\Drivers\Telegram\Exceptions\TelegramConnectionException;
 use Illuminate\Support\Collection;
 use BotMan\BotMan\Drivers\HttpDriver;
 use BotMan\BotMan\Messages\Incoming\Answer;
@@ -302,6 +303,7 @@ class TelegramDriver extends HttpDriver
             'chat_id' => $recipient,
         ], $additionalParameters);
 
+
         /*
          * If we send a Question with buttons, ignore
          * the text and append the question.
@@ -415,5 +417,23 @@ class TelegramDriver extends HttpDriver
     protected function buildFileApiUrl($endpoint)
     {
         return self::FILE_API_URL.$this->config->get('token').'/'.$endpoint;
+    }
+
+    private function post(
+        $url,
+        array $urlParameters = [],
+        array $postParameters = [],
+        array $headers = [],
+        $asJSON = false
+    ) {
+        $response = $this->http->post($url, $urlParameters, $postParameters, $headers, $asJSON);
+        if ($response->getStatusCode() !== 200) {
+            throw new TelegramConnectionException('Error retrieving user info: '.$responseData['description']);
+        }
+        $responseData = json_decode($response->getContent(), true);
+        if (true === $responseData['ok']) {
+            return $response;
+        }
+        throw new TelegramConnectionException("Failure in call to telegram API. {$responseData['description']}.");
     }
 }
