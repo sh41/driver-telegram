@@ -1106,6 +1106,8 @@ class TelegramDriverTest extends PHPUnit_Framework_TestCase
         }
         $this->assertNotNull($throwable);
         $this->assertSame(TelegramConnectionException::class, get_class($throwable));
+        $this->assertNotContains($configurationWithHttpExceptions['telegram']['token'], $throwable->getMessage());
+        $this->assertContains('TELEGRAM-TOKEN-HIDDEN', $throwable->getMessage());
     }
 
     /** @test */
