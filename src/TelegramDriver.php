@@ -428,12 +428,15 @@ class TelegramDriver extends HttpDriver
     ) {
         $response = $this->http->post($url, $urlParameters, $postParameters, $headers, $asJSON);
         if ($response->getStatusCode() !== 200) {
-            throw new TelegramConnectionException("URL: $url\nStatus code: {$response->getStatusCode()}");
+            throw new TelegramConnectionException("Status code: {$response->getStatusCode()}\nURL: $url\nParams: ".print_r($urlParameters,true)."\n".print_r($postParameters, true)."\n".print_r($headers,true));
         }
         $responseData = json_decode($response->getContent(), true);
         if (true === $responseData['ok']) {
             return $response;
         }
-        throw new TelegramConnectionException("Failure in call to URL: $url. {$responseData['description']}.");
+        if (! isset($responseData['description'])) {
+            $responseData['description'] = 'No description from Telegram';
+        }
+        throw new TelegramConnectionException("Description: {$responseData['description']}\nURL: $url\nParams: ".print_r($urlParameters,true)."\n".print_r($postParameters, true)."\n".print_r($headers,true));
     }
 }
