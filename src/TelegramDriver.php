@@ -71,7 +71,11 @@ class TelegramDriver extends HttpDriver
             'user_id' => $matchingMessage->getSender(),
         ];
 
-        $response = $this->post($this->buildApiUrl('getChatMember'), [], $parameters);
+        if ($this->config->get('throw_http_exceptions')) {
+            $response = $this->postWithExceptionHandling($this->buildApiUrl('getChatMember'), [], $parameters);
+        } else {
+            $response = $this->http->post($this->buildApiUrl('getChatMember'), [], $parameters);
+        }
 
         $responseData = json_decode($response->getContent(), true);
 
@@ -247,6 +251,10 @@ class TelegramDriver extends HttpDriver
             'action' => 'typing',
         ];
 
+        if ($this->config->get('throw_http_exceptions')) {
+            return $this->postWithExceptionHandling($this->buildApiUrl('sendChatAction'), [], $parameters);
+        }
+        return $this->http->post($this->buildApiUrl('sendChatAction'), [], $parameters);
         return $this->post($this->buildApiUrl('sendChatAction'), [], $parameters);
     }
 
@@ -285,8 +293,10 @@ class TelegramDriver extends HttpDriver
             'message_id' => $messageId,
             'inline_keyboard' => [],
         ];
-
-        return $this->post($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
+        if ($this->config->get('throw_http_exceptions')) {
+            return $this->postWithExceptionHandling($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
+        }
+        return $this->http->post($this->buildApiUrl('editMessageReplyMarkup'), [], $parameters);
     }
 
     /**
@@ -372,7 +382,10 @@ class TelegramDriver extends HttpDriver
      */
     public function sendPayload($payload)
     {
-        return $this->post($this->buildApiUrl($this->endpoint), [], $payload);
+        if ($this->config->get('throw_http_exceptions')) {
+            return $this->postWithExceptionHandling($this->buildApiUrl($this->endpoint), [], $payload);
+        }
+        return $this->http->post($this->buildApiUrl($this->endpoint), [], $payload);
     }
 
     /**
@@ -397,7 +410,10 @@ class TelegramDriver extends HttpDriver
             'chat_id' => $matchingMessage->getRecipient(),
         ], $parameters);
 
-        return $this->post($this->buildApiUrl($endpoint), [], $parameters);
+        if ($this->config->get('throw_http_exceptions')) {
+            return $this->postWithExceptionHandling($this->buildApiUrl($endpoint), [], $parameters);
+        }
+        return $this->http->post($this->buildApiUrl($endpoint), [], $parameters);
     }
 
     /**
@@ -422,7 +438,7 @@ class TelegramDriver extends HttpDriver
         return self::FILE_API_URL.$this->config->get('token').'/'.$endpoint;
     }
 
-    private function post(
+    private function postWithExceptionHandling(
         $url,
         array $urlParameters = [],
         array $postParameters = [],
@@ -430,16 +446,25 @@ class TelegramDriver extends HttpDriver
         $asJSON = false
     ) {
         $response = $this->http->post($url, $urlParameters, $postParameters, $headers, $asJSON);
-        if ($response->getStatusCode() !== 200) {
-            throw new TelegramConnectionException("Status code: {$response->getStatusCode()}\nURL: $url\nParams: ".print_r($urlParameters,true)."\n".print_r($postParameters, true)."\n".print_r($headers,true));
-        }
         $responseData = json_decode($response->getContent(), true);
-        if (true === $responseData['ok']) {
+        if ($response->isOk() && isset($responseData['ok']) && true ===  $responseData['ok']) {
             return $response;
         }
-        if (! isset($responseData['description'])) {
-            $responseData['description'] = 'No description from Telegram';
-        }
-        throw new TelegramConnectionException("Description: {$responseData['description']}\nURL: $url\nParams: ".print_r($urlParameters,true)."\n".print_r($postParameters, true)."\n".print_r($headers,true));
+        $responseData['description'] = $responseData['description'] ?? 'No description from Telegram';
+        $responseData['error_code'] = $responseData['error_code'] ?? 'No error code from Telegram';
+        $responseData['parameters'] = $responseData['parameters'] ?? 'No parameters from Telegram';
+
+
+        $message = "Status Code: {$response->getStatusCode()}\n".
+            "Description: ".print_r($responseData['description'], true)."\n".
+            "Error Code: ".print_r($responseData['error_code'], true)."\n".
+            "Parameters: ".print_r($responseData['parameters'], true)."\n".
+            "URL: $url\n".
+            "URL Parameters: ".print_r($urlParameters,true)."\n".
+            "Post Parameters: ".print_r($postParameters, true)."\n".
+            "Headers: ". print_r($headers,true)."\n";
+
+        throw new TelegramConnectionException($message );
+
     }
 }
